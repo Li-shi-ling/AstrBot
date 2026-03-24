@@ -44,7 +44,7 @@ const translateIfKey = (value) => {
 
 const filteredIterable = computed(() => {
   if (!props.iterable) return {}
-  const { hint, ...rest } = props.iterable
+  const { hint, logo_token, _display_name, ...rest } = props.iterable
   return rest
 })
 

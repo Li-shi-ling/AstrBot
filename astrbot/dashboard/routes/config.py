@@ -1544,8 +1544,23 @@ class ConfigRoute(Route):
                     self._register_platform_logo(platform, platform_default_tmpl),
                 )
 
+            logger.debug(
+                "[platform-schema] name=%s template_keys=%s metadata_keys=%s i18n_locales=%s",
+                platform.name,
+                list((platform.default_config_tmpl or {}).keys()),
+                list((platform.config_metadata or {}).keys()),
+                list((platform.i18n_resources or {}).keys()),
+            )
+
         if logo_registration_tasks:
             await asyncio.gather(*logo_registration_tasks, return_exceptions=True)
+
+        logger.debug(
+            "[platform-schema] templates=%s type_metadata=%s translations=%s",
+            list(platform_default_tmpl.keys()),
+            list(platform_type_metadata.keys()),
+            list(platform_i18n_translations.keys()),
+        )
 
         return metadata, platform_i18n_translations, platform_type_metadata
 

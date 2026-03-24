@@ -360,6 +360,11 @@ export default {
         this.fetched = true
         this.metadata = res.data.data.metadata;
         this.platformTypeMetadata = res.data.data.platform_type_metadata || {};
+        console.debug('[platform-page] config payload', {
+          templateKeys: Object.keys(this.metadata?.platform_group?.metadata?.platform?.config_template || {}),
+          platformTypeMetadataKeys: Object.keys(this.platformTypeMetadata || {}),
+          platformTypes: (this.config_data.platform || []).map(item => item.type)
+        });
 
         // 将插件平台适配器的 i18n 翻译注入到前端 i18n 系统中
         const platformI18n = res.data.data.platform_i18n_translations;

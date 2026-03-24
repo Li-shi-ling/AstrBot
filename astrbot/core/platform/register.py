@@ -31,14 +31,16 @@ def register_platform_adapter(
                 f"平台适配器 {adapter_name} 已经注册过了，可能发生了适配器命名冲突。",
             )
 
+        template = default_config_tmpl.copy() if default_config_tmpl else None
+
         # 添加必备选项
-        if default_config_tmpl:
-            if "type" not in default_config_tmpl:
-                default_config_tmpl["type"] = adapter_name
-            if "enable" not in default_config_tmpl:
-                default_config_tmpl["enable"] = False
-            if "id" not in default_config_tmpl:
-                default_config_tmpl["id"] = adapter_name
+        if template:
+            if "type" not in template:
+                template["type"] = adapter_name
+            if "enable" not in template:
+                template["enable"] = False
+            if "id" not in template:
+                template["id"] = adapter_name
 
         # Get the module path of the class being decorated
         module_path = cls.__module__
@@ -47,7 +49,7 @@ def register_platform_adapter(
             name=adapter_name,
             description=desc,
             id=adapter_name,
-            default_config_tmpl=default_config_tmpl,
+            default_config_tmpl=template,
             adapter_display_name=adapter_display_name,
             logo_path=logo_path,
             support_streaming_message=support_streaming_message,

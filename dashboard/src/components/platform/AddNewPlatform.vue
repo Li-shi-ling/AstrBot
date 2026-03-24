@@ -410,17 +410,29 @@ export default {
         return baseSchema;
       }
 
+      const currentConfig = this.updatingMode
+        ? this.updatingPlatformConfig
+        : this.selectedPlatformConfig;
       const platformType = this.updatingMode
         ? this.updatingPlatformConfig?.type
         : this.selectedPlatformType;
       const typeMetadata = this.platformTypeMetadata?.[platformType];
+      const mergedItems = {
+        ...(baseSchema.platform.items || {})
+      };
 
       if (typeMetadata?.items) {
-        baseSchema.platform.items = {
-          ...(baseSchema.platform.items || {}),
-          ...JSON.parse(JSON.stringify(typeMetadata.items))
-        };
+        Object.assign(mergedItems, JSON.parse(JSON.stringify(typeMetadata.items)));
       }
+
+      const currentKeys = Object.keys(currentConfig || {}).filter(
+        key => !['hint', 'logo_token', '_display_name'].includes(key)
+      );
+      baseSchema.platform.items = Object.fromEntries(
+        currentKeys
+          .filter(key => mergedItems[key])
+          .map(key => [key, mergedItems[key]])
+      );
 
       return baseSchema;
     },
@@ -471,7 +483,13 @@ export default {
   watch: {
     selectedPlatformType(newType) {
       if (newType && this.platformTemplates[newType]) {
-        this.selectedPlatformConfig = JSON.parse(JSON.stringify(this.platformTemplates[newType]));
+        this.selectedPlatformConfig = this.sanitizePlatformConfig(this.platformTemplates[newType]);
+        console.debug('[platform-dialog] selected template', {
+          selectedPlatformType: newType,
+          template: this.platformTemplates[newType],
+          sanitizedConfig: this.selectedPlatformConfig,
+          schemaKeys: Object.keys(this.platformSchema?.platform?.items || {})
+        });
       } else {
         this.selectedPlatformConfig = null;
       }
@@ -546,6 +564,13 @@ export default {
     }
   },
   methods: {
+    sanitizePlatformConfig(config) {
+      const cloned = JSON.parse(JSON.stringify(config || {}));
+      delete cloned.hint;
+      delete cloned.logo_token;
+      delete cloned._display_name;
+      return cloned;
+    },
     getPlatformIcon(platformType) {
       // Check for plugin-provided logo_token first
       const template = this.platformTemplates?.[platformType];
@@ -685,9 +710,16 @@ export default {
 
       try {
         // 更新平台配置
+        const sanitizedConfig = this.sanitizePlatformConfig(this.updatingPlatformConfig);
+        console.debug('[platform-dialog] update config', {
+          originalId: id,
+          rawConfig: this.updatingPlatformConfig,
+          sanitizedConfig,
+          schemaKeys: Object.keys(this.platformSchema?.platform?.items || {})
+        });
         let resp = await axios.post('/api/config/platform/update', {
           id: id,
-          config: this.updatingPlatformConfig
+          config: sanitizedConfig
         })
 
         if (resp.data.status === 'error') {
@@ -708,16 +740,23 @@ export default {
       }
     },
     async savePlatform() {
-      if (!this.isPlatformIdValid(this.selectedPlatformConfig?.id)) {
+      const sanitizedConfig = this.sanitizePlatformConfig(this.selectedPlatformConfig);
+      console.debug('[platform-dialog] save config', {
+        selectedPlatformType: this.selectedPlatformType,
+        rawConfig: this.selectedPlatformConfig,
+        sanitizedConfig,
+        schemaKeys: Object.keys(this.platformSchema?.platform?.items || {})
+      });
+      if (!this.isPlatformIdValid(sanitizedConfig?.id)) {
         this.loading = false;
         this.showError(this.tm('dialog.invalidPlatformId'));
         return;
       }
 
       // 检查 ID 是否已存在
-      const existingPlatform = this.config_data.platform?.find(p => p.id === this.selectedPlatformConfig.id);
-      if (existingPlatform || this.selectedPlatformConfig.id === 'webchat') {
-        const confirmed = await this.confirmIdConflict(this.selectedPlatformConfig.id);
+      const existingPlatform = this.config_data.platform?.find(p => p.id === sanitizedConfig.id);
+      if (existingPlatform || sanitizedConfig.id === 'webchat') {
+        const confirmed = await this.confirmIdConflict(sanitizedConfig.id);
         if (!confirmed) {
           this.loading = false;
           return; // 如果用户取消，则中止保存
@@ -725,8 +764,8 @@ export default {
       }
 
       // 检查 aiocqhttp 适配器的安全设置
-      if (this.selectedPlatformConfig.type === 'aiocqhttp') {
-        const token = this.selectedPlatformConfig.ws_reverse_token;
+      if (sanitizedConfig.type === 'aiocqhttp') {
+        const token = sanitizedConfig.ws_reverse_token;
         if (!token || token.trim() === '') {
           const continueWithWarning = await this.showOneBotEmptyTokenWarning();
           if (!continueWithWarning) {
@@ -737,7 +776,7 @@ export default {
 
       try {
         // 先保存平台配置
-        const res = await axios.post('/api/config/platform/new', this.selectedPlatformConfig);
+        const res = await axios.post('/api/config/platform/new', sanitizedConfig);
 
         // 平台保存成功后，处理配置文件
         await this.handleConfigFile();
