@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 import copy
 import inspect
 import os
@@ -62,8 +62,8 @@ def try_cast(value: Any, type_: str):
 def _expect_type(value, expected_type, path_key, errors, expected_name=None) -> bool:
     if not isinstance(value, expected_type):
         errors.append(
-            f"閿欒鐨勭被鍨?{path_key}: 鏈熸湜鏄?{expected_name or expected_type.__name__}, "
-            f"寰楀埌浜?{type(value).__name__}"
+            f"错误的类型 {path_key}: 期望是 {expected_name or expected_type.__name__}, "
+            f"得到了 {type(value).__name__}"
         )
         return False
     return True
@@ -84,12 +84,12 @@ def _validate_template_list(value, meta, path_key, errors, validate_fn) -> None:
 
         template_key = item.get("__template_key") or item.get("template")
         if not template_key:
-            errors.append(f"缂哄皯妯℃澘閫夋嫨 {item_path}: 闇€瑕?__template_key")
+            errors.append(f"缺少模板选择 {item_path}: 需要 __template_key")
             continue
 
         template_meta = templates.get(template_key)
         if not template_meta:
-            errors.append(f"鏈煡妯℃澘 {item_path}: {template_key}")
+            errors.append(f"未知模板 {item_path}: {template_key}")
             continue
 
         validate_fn(
@@ -108,9 +108,9 @@ def validate_config(data, schema: dict, is_core: bool) -> tuple[list[str], dict]
                 continue
             meta = metadata[key]
             if "type" not in meta:
-                logger.debug(f"閰嶇疆椤?{path}{key} 娌℃湁绫诲瀷瀹氫箟, 璺宠繃鏍￠獙")
+                logger.debug(f"配置项 {path}{key} 没有类型定义, 跳过校验")
                 continue
-            # null 杞崲
+            # null 转换
             if value is None:
                 data[key] = DEFAULT_VALUE_MAP[meta["type"]]
                 continue
@@ -147,7 +147,7 @@ def validate_config(data, schema: dict, is_core: bool) -> tuple[list[str], dict]
 
             if meta["type"] == "list" and not isinstance(value, list):
                 errors.append(
-                    f"閿欒鐨勭被鍨?{path}{key}: 鏈熸湜鏄?list, 寰楀埌浜?{type(value).__name__}",
+                    f"错误的类型 {path}{key}: 期望是 list, 得到了 {type(value).__name__}",
                 )
             elif (
                 meta["type"] == "list"
@@ -156,7 +156,7 @@ def validate_config(data, schema: dict, is_core: bool) -> tuple[list[str], dict]
                 and "items" in meta
                 and isinstance(value[0], dict)
             ):
-                # 褰撳墠浠呴拡瀵?list[dict] 鐨勬儏鍐佃繘琛岀被鍨嬫牎楠岋紝浠ラ€傞厤 AstrBot 涓?platform銆乸rovider 鐨勯厤缃?
+                # 当前仅针对 list[dict] 的情况进行类型校验，以适配 AstrBot 中 platform、provider 的配置
                 for item in value:
                     validate(item, meta["items"], path=f"{path}{key}.")
             elif meta["type"] == "object" and isinstance(value, dict):
@@ -166,31 +166,31 @@ def validate_config(data, schema: dict, is_core: bool) -> tuple[list[str], dict]
                 casted = try_cast(value, "int")
                 if casted is None:
                     errors.append(
-                        f"閿欒鐨勭被鍨?{path}{key}: 鏈熸湜鏄?int, 寰楀埌浜?{type(value).__name__}",
+                        f"错误的类型 {path}{key}: 期望是 int, 得到了 {type(value).__name__}",
                     )
                 data[key] = casted
             elif meta["type"] == "float" and not isinstance(value, float):
                 casted = try_cast(value, "float")
                 if casted is None:
                     errors.append(
-                        f"閿欒鐨勭被鍨?{path}{key}: 鏈熸湜鏄?float, 寰楀埌浜?{type(value).__name__}",
+                        f"错误的类型 {path}{key}: 期望是 float, 得到了 {type(value).__name__}",
                     )
                 data[key] = casted
             elif meta["type"] == "bool" and not isinstance(value, bool):
                 errors.append(
-                    f"閿欒鐨勭被鍨?{path}{key}: 鏈熸湜鏄?bool, 寰楀埌浜?{type(value).__name__}",
+                    f"错误的类型 {path}{key}: 期望是 bool, 得到了 {type(value).__name__}",
                 )
             elif meta["type"] in ["string", "text"] and not isinstance(value, str):
                 errors.append(
-                    f"閿欒鐨勭被鍨?{path}{key}: 鏈熸湜鏄?string, 寰楀埌浜?{type(value).__name__}",
+                    f"错误的类型 {path}{key}: 期望是 string, 得到了 {type(value).__name__}",
                 )
             elif meta["type"] == "list" and not isinstance(value, list):
                 errors.append(
-                    f"閿欒鐨勭被鍨?{path}{key}: 鏈熸湜鏄?list, 寰楀埌浜?{type(value).__name__}",
+                    f"错误的类型 {path}{key}: 期望是 list, 得到了 {type(value).__name__}",
                 )
             elif meta["type"] == "object" and not isinstance(value, dict):
                 errors.append(
-                    f"閿欒鐨勭被鍨?{path}{key}: 鏈熸湜鏄?dict, 寰楀埌浜?{type(value).__name__}",
+                    f"错误的类型 {path}{key}: 期望是 dict, 得到了 {type(value).__name__}",
                 )
 
     if is_core:
@@ -263,7 +263,7 @@ async def _validate_neo_connectivity(
 
     endpoint = sandbox.get("shipyard_neo_endpoint", "").rstrip("/")
     if not endpoint:
-        return "鈿狅笍 Shipyard Neo endpoint 鏈缃?
+        return "⚠️ Shipyard Neo endpoint 未设置"
 
     access_token = sandbox.get("shipyard_neo_access_token", "")
     if not access_token:
@@ -274,8 +274,8 @@ async def _validate_neo_connectivity(
 
     if not access_token:
         return (
-            "鈿狅笍 鏈壘鍒?Bay API Key銆傝濉啓璁块棶浠ょ墝锛?
-            "鎴栫‘淇?Bay 鐨?credentials.json 鍙鑷姩鍙戠幇銆?
+            "⚠️ 未找到 Bay API Key。请填写访问令牌，"
+            "或确保 Bay 的 credentials.json 可被自动发现。"
         )
 
     # Connectivity check
@@ -290,11 +290,11 @@ async def _validate_neo_connectivity(
             ) as resp:
                 if resp.status != 200:
                     return (
-                        f"鈿狅笍 Bay 鍋ュ悍妫€鏌ュけ璐?(HTTP {resp.status})锛?
-                        f"璇风‘璁?Bay 姝ｅ湪杩愯: {endpoint}"
+                        f"⚠️ Bay 健康检查失败 (HTTP {resp.status})，"
+                        f"请确认 Bay 正在运行: {endpoint}"
                     )
     except Exception:
-        return f"鈿狅笍 鏃犳硶杩炴帴 Bay ({endpoint})锛岃纭 Bay 宸插惎鍔ㄣ€?
+        return f"⚠️ 无法连接 Bay ({endpoint})，请确认 Bay 已启动。"
 
     return None
 
@@ -302,7 +302,7 @@ async def _validate_neo_connectivity(
 def save_config(
     post_config: dict, config: AstrBotConfig, is_core: bool = False
 ) -> None:
-    """楠岃瘉骞朵繚瀛橀厤缃?""
+    """验证并保存配置"""
     errors = None
     logger.info(f"Saving config, is_core={is_core}")
 
@@ -323,10 +323,10 @@ def save_config(
             )
     except BaseException as e:
         logger.error(traceback.format_exc())
-        logger.warning(f"楠岃瘉閰嶇疆鏃跺嚭鐜板紓甯? {e}")
-        raise ValueError(f"楠岃瘉閰嶇疆鏃跺嚭鐜板紓甯? {e}")
+        logger.warning(f"验证配置时出现异常: {e}")
+        raise ValueError(f"验证配置时出现异常: {e}")
     if errors:
-        raise ValueError(f"鏍煎紡鏍￠獙鏈€氳繃: {errors}")
+        raise ValueError(f"格式校验未通过: {errors}")
 
     config.save_config(post_config)
 
@@ -340,7 +340,7 @@ class ConfigRoute(Route):
         super().__init__(context)
         self.core_lifecycle = core_lifecycle
         self.config: AstrBotConfig = core_lifecycle.astrbot_config
-        self._logo_token_cache = {}  # 缂撳瓨logo token锛岄伩鍏嶉噸澶嶆敞鍐?
+        self._logo_token_cache = {}  # 缓存logo token，避免重复注册
         self.acm = core_lifecycle.astrbot_config_mgr
         self.ucr = core_lifecycle.umop_config_router
         self.routes = {
@@ -388,14 +388,14 @@ class ConfigRoute(Route):
         self.register_routes()
 
     async def delete_provider_source(self):
-        """鍒犻櫎 provider_source锛屽苟鏇存柊鍏宠仈鐨?providers"""
+        """删除 provider_source，并更新关联的 providers"""
         post_data = await request.json
         if not post_data:
-            return Response().error("缂哄皯閰嶇疆鏁版嵁").__dict__
+            return Response().error("缺少配置数据").__dict__
 
         provider_source_id = post_data.get("id")
         if not provider_source_id:
-            return Response().error("缂哄皯 provider_source_id").__dict__
+            return Response().error("缺少 provider_source_id").__dict__
 
         provider_sources = self.config.get("provider_sources", [])
         target_idx = next(
@@ -408,15 +408,15 @@ class ConfigRoute(Route):
         )
 
         if target_idx == -1:
-            return Response().error("鏈壘鍒板搴旂殑 provider source").__dict__
+            return Response().error("未找到对应的 provider source").__dict__
 
-        # 鍒犻櫎 provider_source
+        # 删除 provider_source
         del provider_sources[target_idx]
 
-        # 鍐欏洖閰嶇疆
+        # 写回配置
         self.config["provider_sources"] = provider_sources
 
-        # 鍒犻櫎寮曠敤浜嗚 provider_source 鐨?providers
+        # 删除引用了该 provider_source 的 providers
         await self.core_lifecycle.provider_manager.delete_provider(
             provider_source_id=provider_source_id
         )
@@ -427,23 +427,23 @@ class ConfigRoute(Route):
             logger.error(traceback.format_exc())
             return Response().error(str(e)).__dict__
 
-        return Response().ok(message="鍒犻櫎 provider source 鎴愬姛").__dict__
+        return Response().ok(message="删除 provider source 成功").__dict__
 
     async def update_provider_source(self):
-        """鏇存柊鎴栨柊澧?provider_source锛屽苟閲嶈浇鍏宠仈鐨?providers"""
+        """更新或新增 provider_source，并重载关联的 providers"""
         post_data = await request.json
         if not post_data:
-            return Response().error("缂哄皯閰嶇疆鏁版嵁").__dict__
+            return Response().error("缺少配置数据").__dict__
 
         new_source_config = post_data.get("config") or post_data
         original_id = post_data.get("original_id")
         if not original_id:
-            return Response().error("缂哄皯 original_id").__dict__
+            return Response().error("缺少 original_id").__dict__
 
         if not isinstance(new_source_config, dict):
-            return Response().error("缂哄皯鎴栭敊璇殑閰嶇疆鏁版嵁").__dict__
+            return Response().error("缺少或错误的配置数据").__dict__
 
-        # 纭繚閰嶇疆涓湁 id 瀛楁
+        # 确保配置中有 id 字段
         if not new_source_config.get("id"):
             new_source_config["id"] = original_id
 
@@ -459,7 +459,7 @@ class ConfigRoute(Route):
                     .__dict__
                 )
 
-        # 鏌ユ壘鏃х殑 provider_source锛岃嫢涓嶅瓨鍦ㄥ垯杩藉姞涓烘柊閰嶇疆
+        # 查找旧的 provider_source，若不存在则追加为新配置
         target_idx = next(
             (i for i, ps in enumerate(provider_sources) if ps.get("id") == original_id),
             -1,
@@ -472,14 +472,14 @@ class ConfigRoute(Route):
             old_id = provider_sources[target_idx].get("id")
             provider_sources[target_idx] = new_source_config
 
-        # 鏇存柊寮曠敤浜嗚 provider_source 鐨?providers
+        # 更新引用了该 provider_source 的 providers
         affected_providers = []
         for provider in self.config.get("provider", []):
             if provider.get("provider_source_id") == old_id:
                 provider["provider_source_id"] = new_source_config["id"]
                 affected_providers.append(provider)
 
-        # 鍐欏洖閰嶇疆
+        # 写回配置
         self.config["provider_sources"] = provider_sources
 
         try:
@@ -488,7 +488,7 @@ class ConfigRoute(Route):
             logger.error(traceback.format_exc())
             return Response().error(str(e)).__dict__
 
-        # 閲嶈浇鍙楀奖鍝嶇殑 providers锛屼娇鏂扮殑 source 閰嶇疆鐢熸晥
+        # 重载受影响的 providers，使新的 source 配置生效
         reload_errors = []
         prov_mgr = self.core_lifecycle.provider_manager
         for provider in affected_providers:
@@ -501,11 +501,11 @@ class ConfigRoute(Route):
         if reload_errors:
             return (
                 Response()
-                .error("鏇存柊鎴愬姛锛屼絾閮ㄥ垎鎻愪緵鍟嗛噸杞藉け璐? " + ", ".join(reload_errors))
+                .error("更新成功，但部分提供商重载失败: " + ", ".join(reload_errors))
                 .__dict__
             )
 
-        return Response().ok(message="鏇存柊 provider source 鎴愬姛").__dict__
+        return Response().ok(message="更新 provider source 成功").__dict__
 
     async def get_provider_template(self):
         config_schema, provider_i18n_translations, provider_type_metadata = (
@@ -521,97 +521,97 @@ class ConfigRoute(Route):
         return Response().ok(data=data).__dict__
 
     async def get_uc_table(self):
-        """鑾峰彇 UMOP 閰嶇疆璺敱琛?""
+        """获取 UMOP 配置路由表"""
         return Response().ok({"routing": self.ucr.umop_to_conf_id}).__dict__
 
     async def update_ucr_all(self):
-        """鏇存柊 UMOP 閰嶇疆璺敱琛ㄧ殑鍏ㄩ儴鍐呭"""
+        """更新 UMOP 配置路由表的全部内容"""
         post_data = await request.json
         if not post_data:
-            return Response().error("缂哄皯閰嶇疆鏁版嵁").__dict__
+            return Response().error("缺少配置数据").__dict__
 
         new_routing = post_data.get("routing", None)
 
         if not new_routing or not isinstance(new_routing, dict):
-            return Response().error("缂哄皯鎴栭敊璇殑璺敱琛ㄦ暟鎹?).__dict__
+            return Response().error("缺少或错误的路由表数据").__dict__
 
         try:
             await self.ucr.update_routing_data(new_routing)
-            return Response().ok(message="鏇存柊鎴愬姛").__dict__
+            return Response().ok(message="更新成功").__dict__
         except Exception as e:
             logger.error(traceback.format_exc())
-            return Response().error(f"鏇存柊璺敱琛ㄥけ璐? {e!s}").__dict__
+            return Response().error(f"更新路由表失败: {e!s}").__dict__
 
     async def update_ucr(self):
-        """鏇存柊 UMOP 閰嶇疆璺敱琛?""
+        """更新 UMOP 配置路由表"""
         post_data = await request.json
         if not post_data:
-            return Response().error("缂哄皯閰嶇疆鏁版嵁").__dict__
+            return Response().error("缺少配置数据").__dict__
 
         umo = post_data.get("umo", None)
         conf_id = post_data.get("conf_id", None)
 
         if not umo or not conf_id:
-            return Response().error("缂哄皯 UMO 鎴栭厤缃枃浠?ID").__dict__
+            return Response().error("缺少 UMO 或配置文件 ID").__dict__
 
         try:
             await self.ucr.update_route(umo, conf_id)
-            return Response().ok(message="鏇存柊鎴愬姛").__dict__
+            return Response().ok(message="更新成功").__dict__
         except Exception as e:
             logger.error(traceback.format_exc())
-            return Response().error(f"鏇存柊璺敱琛ㄥけ璐? {e!s}").__dict__
+            return Response().error(f"更新路由表失败: {e!s}").__dict__
 
     async def delete_ucr(self):
-        """鍒犻櫎 UMOP 閰嶇疆璺敱琛ㄤ腑鐨勪竴椤?""
+        """删除 UMOP 配置路由表中的一项"""
         post_data = await request.json
         if not post_data:
-            return Response().error("缂哄皯閰嶇疆鏁版嵁").__dict__
+            return Response().error("缺少配置数据").__dict__
 
         umo = post_data.get("umo", None)
 
         if not umo:
-            return Response().error("缂哄皯 UMO").__dict__
+            return Response().error("缺少 UMO").__dict__
 
         try:
             if umo in self.ucr.umop_to_conf_id:
                 del self.ucr.umop_to_conf_id[umo]
                 await self.ucr.update_routing_data(self.ucr.umop_to_conf_id)
-            return Response().ok(message="鍒犻櫎鎴愬姛").__dict__
+            return Response().ok(message="删除成功").__dict__
         except Exception as e:
             logger.error(traceback.format_exc())
-            return Response().error(f"鍒犻櫎璺敱琛ㄩ」澶辫触: {e!s}").__dict__
+            return Response().error(f"删除路由表项失败: {e!s}").__dict__
 
     async def get_default_config(self):
-        """鑾峰彇榛樿閰嶇疆鏂囦欢"""
+        """获取默认配置文件"""
         metadata = ConfigMetadataI18n.convert_to_i18n_keys(CONFIG_METADATA_3)
         return Response().ok({"config": DEFAULT_CONFIG, "metadata": metadata}).__dict__
 
     async def get_abconf_list(self):
-        """鑾峰彇鎵€鏈?AstrBot 閰嶇疆鏂囦欢鐨勫垪琛?""
+        """获取所有 AstrBot 配置文件的列表"""
         abconf_list = self.acm.get_conf_list()
         return Response().ok({"info_list": abconf_list}).__dict__
 
     async def create_abconf(self):
-        """鍒涘缓鏂扮殑 AstrBot 閰嶇疆鏂囦欢"""
+        """创建新的 AstrBot 配置文件"""
         post_data = await request.json
         if not post_data:
-            return Response().error("缂哄皯閰嶇疆鏁版嵁").__dict__
+            return Response().error("缺少配置数据").__dict__
         name = post_data.get("name", None)
         config = post_data.get("config", DEFAULT_CONFIG)
 
         try:
             conf_id = self.acm.create_conf(name=name, config=config)
             await self.core_lifecycle.reload_pipeline_scheduler(conf_id)
-            return Response().ok(message="鍒涘缓鎴愬姛", data={"conf_id": conf_id}).__dict__
+            return Response().ok(message="创建成功", data={"conf_id": conf_id}).__dict__
         except ValueError as e:
             return Response().error(str(e)).__dict__
 
     async def get_abconf(self):
-        """鑾峰彇鎸囧畾 AstrBot 閰嶇疆鏂囦欢"""
+        """获取指定 AstrBot 配置文件"""
         abconf_id = request.args.get("id")
         system_config = request.args.get("system_config", "0").lower() == "1"
         if not abconf_id and not system_config:
-            return Response().error("缂哄皯閰嶇疆鏂囦欢 ID").__dict__
+            return Response().error("缺少配置文件 ID").__dict__
 
         try:
             if system_config:
@@ -629,52 +629,52 @@ class ConfigRoute(Route):
             return Response().error(str(e)).__dict__
 
     async def delete_abconf(self):
-        """鍒犻櫎鎸囧畾 AstrBot 閰嶇疆鏂囦欢"""
+        """删除指定 AstrBot 配置文件"""
         post_data = await request.json
         if not post_data:
-            return Response().error("缂哄皯閰嶇疆鏁版嵁").__dict__
+            return Response().error("缺少配置数据").__dict__
 
         conf_id = post_data.get("id")
         if not conf_id:
-            return Response().error("缂哄皯閰嶇疆鏂囦欢 ID").__dict__
+            return Response().error("缺少配置文件 ID").__dict__
 
         try:
             success = self.acm.delete_conf(conf_id)
             if success:
                 self.core_lifecycle.pipeline_scheduler_mapping.pop(conf_id, None)
-                return Response().ok(message="鍒犻櫎鎴愬姛").__dict__
-            return Response().error("鍒犻櫎澶辫触").__dict__
+                return Response().ok(message="删除成功").__dict__
+            return Response().error("删除失败").__dict__
         except ValueError as e:
             return Response().error(str(e)).__dict__
         except Exception as e:
             logger.error(traceback.format_exc())
-            return Response().error(f"鍒犻櫎閰嶇疆鏂囦欢澶辫触: {e!s}").__dict__
+            return Response().error(f"删除配置文件失败: {e!s}").__dict__
 
     async def update_abconf(self):
-        """鏇存柊鎸囧畾 AstrBot 閰嶇疆鏂囦欢淇℃伅"""
+        """更新指定 AstrBot 配置文件信息"""
         post_data = await request.json
         if not post_data:
-            return Response().error("缂哄皯閰嶇疆鏁版嵁").__dict__
+            return Response().error("缺少配置数据").__dict__
 
         conf_id = post_data.get("id")
         if not conf_id:
-            return Response().error("缂哄皯閰嶇疆鏂囦欢 ID").__dict__
+            return Response().error("缺少配置文件 ID").__dict__
 
         name = post_data.get("name")
 
         try:
             success = self.acm.update_conf_info(conf_id, name=name)
             if success:
-                return Response().ok(message="鏇存柊鎴愬姛").__dict__
-            return Response().error("鏇存柊澶辫触").__dict__
+                return Response().ok(message="更新成功").__dict__
+            return Response().error("更新失败").__dict__
         except ValueError as e:
             return Response().error(str(e)).__dict__
         except Exception as e:
             logger.error(traceback.format_exc())
-            return Response().error(f"鏇存柊閰嶇疆鏂囦欢澶辫触: {e!s}").__dict__
+            return Response().error(f"更新配置文件失败: {e!s}").__dict__
 
     async def _test_single_provider(self, provider):
-        """杈呭姪鍑芥暟锛氭祴璇曞崟涓?provider 鐨勫彲鐢ㄦ€?""
+        """辅助函数：测试单个 provider 的可用性"""
         meta = provider.meta()
         provider_name = provider.provider_config.get("id", "Unknown Provider")
         provider_capability_type = meta.provider_type
@@ -684,7 +684,7 @@ class ConfigRoute(Route):
             "model": getattr(meta, "model", "Unknown Model"),
             "type": provider_capability_type.value,
             "name": provider_name,
-            "status": "unavailable",  # 榛樿涓轰笉鍙敤
+            "status": "unavailable",  # 默认为不可用
             "error": None,
         }
         logger.debug(
@@ -716,7 +716,7 @@ class ConfigRoute(Route):
         log_fn=logger.error,
     ):
         log_fn(message)
-        # 璁板綍鏇磋缁嗙殑traceback淇℃伅锛屼絾鍙湪鏄弗閲嶉敊璇椂
+        # 记录更详细的traceback信息，但只在是严重错误时
         if status_code == 500:
             log_fn(traceback.format_exc())
         return Response().error(message).__dict__
@@ -756,12 +756,8 @@ class ConfigRoute(Route):
             )
 
     async def get_configs(self):
-        logger.warning(
-            "[config-route] /api/config/get called plugin_name=%s",
-            request.args.get("plugin_name", None),
-        )
-        # plugin_name 涓虹┖鏃惰繑鍥?AstrBot 閰嶇疆
-        # 鍚﹀垯杩斿洖鎸囧畾 plugin_name 鐨勬彃浠堕厤缃?
+        # plugin_name 为空时返回 AstrBot 配置
+        # 否则返回指定 plugin_name 的插件配置
         plugin_name = request.args.get("plugin_name", None)
         if not plugin_name:
             return Response().ok(await self._get_astrbot_config()).__dict__
@@ -770,7 +766,7 @@ class ConfigRoute(Route):
     async def get_provider_config_list(self):
         provider_type = request.args.get("provider_type", None)
         if not provider_type:
-            return Response().error("缂哄皯鍙傛暟 provider_type").__dict__
+            return Response().error("缺少参数 provider_type").__dict__
         provider_type_ls = provider_type.split(",")
         provider_list = []
         ps = self.core_lifecycle.provider_manager.providers_config
@@ -796,19 +792,19 @@ class ConfigRoute(Route):
         return Response().ok(provider_list).__dict__
 
     async def get_provider_model_list(self):
-        """鑾峰彇鎸囧畾鎻愪緵鍟嗙殑妯″瀷鍒楄〃"""
+        """获取指定提供商的模型列表"""
         provider_id = request.args.get("provider_id", None)
         if not provider_id:
-            return Response().error("缂哄皯鍙傛暟 provider_id").__dict__
+            return Response().error("缺少参数 provider_id").__dict__
 
         prov_mgr = self.core_lifecycle.provider_manager
         provider = prov_mgr.inst_map.get(provider_id, None)
         if not provider:
-            return Response().error(f"鏈壘鍒?ID 涓?{provider_id} 鐨勬彁渚涘晢").__dict__
+            return Response().error(f"未找到 ID 为 {provider_id} 的提供商").__dict__
         if not isinstance(provider, Provider):
             return (
                 Response()
-                .error(f"鎻愪緵鍟?{provider_id} 绫诲瀷涓嶆敮鎸佽幏鍙栨ā鍨嬪垪琛?)
+                .error(f"提供商 {provider_id} 类型不支持获取模型列表")
                 .__dict__
             )
 
@@ -833,23 +829,23 @@ class ConfigRoute(Route):
             return Response().error(str(e)).__dict__
 
     async def get_embedding_dim(self):
-        """鑾峰彇宓屽叆妯″瀷鐨勭淮搴?""
+        """获取嵌入模型的维度"""
         post_data = await request.json
         provider_config = post_data.get("provider_config", None)
         if not provider_config:
-            return Response().error("缂哄皯鍙傛暟 provider_config").__dict__
+            return Response().error("缺少参数 provider_config").__dict__
 
         try:
-            # 鍔ㄦ€佸鍏?EmbeddingProvider
+            # 动态导入 EmbeddingProvider
             from astrbot.core.provider.provider import EmbeddingProvider
             from astrbot.core.provider.register import provider_cls_map
 
-            # 鑾峰彇 provider 绫诲瀷
+            # 获取 provider 类型
             provider_type = provider_config.get("type", None)
             if not provider_type:
-                return Response().error("provider_config 缂哄皯 type 瀛楁").__dict__
+                return Response().error("provider_config 缺少 type 字段").__dict__
 
-            # 棣栨娣诲姞鏌愮被鎻愪緵鍟嗘椂锛宲rovider_cls_map 鍙兘灏氭湭娉ㄥ唽璇ラ€傞厤鍣?
+            # 首次添加某类提供商时，provider_cls_map 可能尚未注册该适配器
             if provider_type not in provider_cls_map:
                 try:
                     self.core_lifecycle.provider_manager.dynamic_import_provider(
@@ -860,16 +856,16 @@ class ConfigRoute(Route):
                     return (
                         Response()
                         .error(
-                            "鎻愪緵鍟嗛€傞厤鍣ㄥ姞杞藉け璐ワ紝璇锋鏌ユ彁渚涘晢绫诲瀷閰嶇疆鎴栨煡鐪嬫湇鍔＄鏃ュ織"
+                            "提供商适配器加载失败，请检查提供商类型配置或查看服务端日志"
                         )
                         .__dict__
                     )
 
-            # 鑾峰彇瀵瑰簲鐨?provider 绫?
+            # 获取对应的 provider 类
             if provider_type not in provider_cls_map:
                 return (
                     Response()
-                    .error(f"鏈壘鍒伴€傜敤浜?{provider_type} 鐨勬彁渚涘晢閫傞厤鍣?)
+                    .error(f"未找到适用于 {provider_type} 的提供商适配器")
                     .__dict__
                 )
 
@@ -877,45 +873,45 @@ class ConfigRoute(Route):
             cls_type = provider_metadata.cls_type
 
             if not cls_type:
-                return Response().error(f"鏃犳硶鎵惧埌 {provider_type} 鐨勭被").__dict__
+                return Response().error(f"无法找到 {provider_type} 的类").__dict__
 
-            # 瀹炰緥鍖?provider
+            # 实例化 provider
             inst = cls_type(provider_config, {})
 
-            # 妫€鏌ユ槸鍚︽槸 EmbeddingProvider
+            # 检查是否是 EmbeddingProvider
             if not isinstance(inst, EmbeddingProvider):
-                return Response().error("鎻愪緵鍟嗕笉鏄?EmbeddingProvider 绫诲瀷").__dict__
+                return Response().error("提供商不是 EmbeddingProvider 类型").__dict__
 
             init_fn = getattr(inst, "initialize", None)
             if inspect.iscoroutinefunction(init_fn):
                 await init_fn()
 
-            # 閫氳繃瀹為檯璇锋眰楠岃瘉褰撳墠 embedding_dimensions 鏄惁鍙敤
+            # 通过实际请求验证当前 embedding_dimensions 是否可用
             vec = await inst.get_embedding("echo")
             dim = len(vec)
 
             logger.info(
-                f"妫€娴嬪埌 {provider_config.get('id', 'unknown')} 鐨勫祵鍏ュ悜閲忕淮搴︿负 {dim}",
+                f"检测到 {provider_config.get('id', 'unknown')} 的嵌入向量维度为 {dim}",
             )
 
             return Response().ok({"embedding_dimensions": dim}).__dict__
         except Exception as e:
             logger.error(traceback.format_exc())
-            return Response().error(f"鑾峰彇宓屽叆缁村害澶辫触: {e!s}").__dict__
+            return Response().error(f"获取嵌入维度失败: {e!s}").__dict__
 
     async def get_provider_source_models(self):
-        """鑾峰彇鎸囧畾 provider_source 鏀寔鐨勬ā鍨嬪垪琛?
+        """获取指定 provider_source 支持的模型列表
 
-        鏈川涓婁細涓存椂鍒濆鍖栦竴涓?Provider 瀹炰緥锛岃皟鐢?get_models() 鑾峰彇妯″瀷鍒楄〃锛岀劧鍚庨攢姣佸疄渚?
+        本质上会临时初始化一个 Provider 实例，调用 get_models() 获取模型列表，然后销毁实例
         """
         provider_source_id = request.args.get("source_id")
         if not provider_source_id:
-            return Response().error("缂哄皯鍙傛暟 source_id").__dict__
+            return Response().error("缺少参数 source_id").__dict__
 
         try:
             from astrbot.core.provider.register import provider_cls_map
 
-            # 浠庨厤缃腑鏌ユ壘瀵瑰簲鐨?provider_source
+            # 从配置中查找对应的 provider_source
             provider_sources = self.config.get("provider_sources", [])
             provider_source = None
             for ps in provider_sources:
@@ -926,14 +922,14 @@ class ConfigRoute(Route):
             if not provider_source:
                 return (
                     Response()
-                    .error(f"鏈壘鍒?ID 涓?{provider_source_id} 鐨?provider_source")
+                    .error(f"未找到 ID 为 {provider_source_id} 的 provider_source")
                     .__dict__
                 )
 
-            # 鑾峰彇 provider 绫诲瀷
+            # 获取 provider 类型
             provider_type = provider_source.get("type", None)
             if not provider_type:
-                return Response().error("provider_source 缂哄皯 type 瀛楁").__dict__
+                return Response().error("provider_source 缺少 type 字段").__dict__
 
             try:
                 self.core_lifecycle.provider_manager.dynamic_import_provider(
@@ -941,13 +937,13 @@ class ConfigRoute(Route):
                 )
             except ImportError as e:
                 logger.error(traceback.format_exc())
-                return Response().error(f"鍔ㄦ€佸鍏ユ彁渚涘晢閫傞厤鍣ㄥけ璐? {e!s}").__dict__
+                return Response().error(f"动态导入提供商适配器失败: {e!s}").__dict__
 
-            # 鑾峰彇瀵瑰簲鐨?provider 绫?
+            # 获取对应的 provider 类
             if provider_type not in provider_cls_map:
                 return (
                     Response()
-                    .error(f"鏈壘鍒伴€傜敤浜?{provider_type} 鐨勬彁渚涘晢閫傞厤鍣?)
+                    .error(f"未找到适用于 {provider_type} 的提供商适配器")
                     .__dict__
                 )
 
@@ -955,25 +951,25 @@ class ConfigRoute(Route):
             cls_type = provider_metadata.cls_type
 
             if not cls_type:
-                return Response().error(f"鏃犳硶鎵惧埌 {provider_type} 鐨勭被").__dict__
+                return Response().error(f"无法找到 {provider_type} 的类").__dict__
 
-            # 妫€鏌ユ槸鍚︽槸 Provider 绫诲瀷
+            # 检查是否是 Provider 类型
             if not issubclass(cls_type, Provider):
                 return (
                     Response()
-                    .error(f"鎻愪緵鍟?{provider_type} 涓嶆敮鎸佽幏鍙栨ā鍨嬪垪琛?)
+                    .error(f"提供商 {provider_type} 不支持获取模型列表")
                     .__dict__
                 )
 
-            # 涓存椂瀹炰緥鍖?provider
+            # 临时实例化 provider
             inst = cls_type(provider_source, {})
 
-            # 濡傛灉鏈?initialize 鏂规硶锛岃皟鐢ㄥ畠
+            # 如果有 initialize 方法，调用它
             init_fn = getattr(inst, "initialize", None)
             if inspect.iscoroutinefunction(init_fn):
                 await init_fn()
 
-            # 鑾峰彇妯″瀷鍒楄〃
+            # 获取模型列表
             models = await inst.get_models()
             models = models or []
 
@@ -983,13 +979,13 @@ class ConfigRoute(Route):
                 if meta:
                     metadata_map[model_id] = meta
 
-            # 閿€姣佸疄渚嬶紙濡傛灉鏈?terminate 鏂规硶锛?
+            # 销毁实例（如果有 terminate 方法）
             terminate_fn = getattr(inst, "terminate", None)
             if inspect.iscoroutinefunction(terminate_fn):
                 await terminate_fn()
 
             logger.info(
-                f"鑾峰彇鍒?provider_source {provider_source_id} 鐨勬ā鍨嬪垪琛? {models}",
+                f"获取到 provider_source {provider_source_id} 的模型列表: {models}",
             )
 
             return (
@@ -999,10 +995,10 @@ class ConfigRoute(Route):
             )
         except Exception as e:
             logger.error(traceback.format_exc())
-            return Response().error(f"鑾峰彇妯″瀷鍒楄〃澶辫触: {e!s}").__dict__
+            return Response().error(f"获取模型列表失败: {e!s}").__dict__
 
     async def get_platform_list(self):
-        """鑾峰彇鎵€鏈夊钩鍙扮殑鍒楄〃"""
+        """获取所有平台的列表"""
         platform_list = []
         for platform in self.config["platform"]:
             platform_list.append(platform)
@@ -1014,8 +1010,8 @@ class ConfigRoute(Route):
         conf_id = data.get("conf_id", None)
 
         try:
-            # 涓嶆洿鏂?provider_sources, provider, platform
-            # 杩欎簺閰嶇疆鏈夊崟鐙殑鎺ュ彛杩涜鏇存柊
+            # 不更新 provider_sources, provider, platform
+            # 这些配置有单独的接口进行更新
             if conf_id == "default":
                 no_update_keys = ["provider_sources", "provider", "platform"]
                 for key in no_update_keys:
@@ -1027,8 +1023,8 @@ class ConfigRoute(Route):
             # Non-blocking Bay connectivity check
             warning = await _validate_neo_connectivity(config)
             if warning:
-                return Response().ok(None, f"淇濆瓨鎴愬姛銆倇warning}").__dict__
-            return Response().ok(None, "淇濆瓨鎴愬姛~").__dict__
+                return Response().ok(None, f"保存成功。{warning}").__dict__
+            return Response().ok(None, "保存成功~").__dict__
         except Exception as e:
             logger.error(traceback.format_exc())
             return Response().error(str(e)).__dict__
@@ -1041,7 +1037,7 @@ class ConfigRoute(Route):
             await self.core_lifecycle.plugin_manager.reload(plugin_name)
             return (
                 Response()
-                .ok(None, f"淇濆瓨鎻掍欢 {plugin_name} 鎴愬姛~ 鏈哄櫒浜烘鍦ㄧ儹閲嶈浇鎻掍欢銆?)
+                .ok(None, f"保存插件 {plugin_name} 成功~ 机器人正在热重载插件。")
                 .__dict__
             )
         except Exception as e:
@@ -1056,10 +1052,10 @@ class ConfigRoute(Route):
     def _resolve_config_file_scope(
         self,
     ) -> tuple[str, str, str, StarMetadata, AstrBotConfig]:
-        """灏嗚姹傚弬鏁拌В鏋愪负涓€涓槑纭殑閰嶇疆浣滅敤鍩熴€?
+        """将请求参数解析为一个明确的配置作用域。
 
-        褰撳墠鏀寔鐨?scope锛?
-        - scope=plugin锛歯ame=<plugin_name>锛宬ey=<config_key_path>
+        当前支持的 scope：
+        - scope=plugin：name=<plugin_name>，key=<config_key_path>
         """
 
         scope = request.args.get("scope") or "plugin"
@@ -1078,7 +1074,7 @@ class ConfigRoute(Route):
         return scope, name, key_path, md, md.config
 
     async def upload_config_file(self):
-        """涓婁紶鏂囦欢鍒版彃浠舵暟鎹洰褰曪紙鐢ㄤ簬鏌愪釜 file 绫诲瀷閰嶇疆椤癸級銆?""
+        """上传文件到插件数据目录（用于某个 file 类型配置项）。"""
 
         try:
             scope, name, key_path, md, config = self._resolve_config_file_scope()
@@ -1157,7 +1153,7 @@ class ConfigRoute(Route):
         return Response().ok({"uploaded": uploaded, "errors": errors}).__dict__
 
     async def delete_config_file(self):
-        """鍒犻櫎鎻掍欢鏁版嵁鐩綍涓殑鏂囦欢銆?""
+        """删除插件数据目录中的文件。"""
 
         scope = request.args.get("scope") or "plugin"
         name = request.args.get("name")
@@ -1193,7 +1189,7 @@ class ConfigRoute(Route):
         return Response().ok(None, "Deleted").__dict__
 
     async def get_config_file_list(self):
-        """鑾峰彇閰嶇疆椤瑰搴旂洰褰曚笅鐨勬枃浠跺垪琛ㄣ€?""
+        """获取配置项对应目录下的文件列表。"""
 
         try:
             _, name, key_path, _, config = self._resolve_config_file_scope()
@@ -1237,7 +1233,7 @@ class ConfigRoute(Route):
     async def post_new_platform(self):
         new_platform_config = await request.json
 
-        # 濡傛灉鏄敮鎸佺粺涓€ webhook 妯″紡鐨勫钩鍙帮紝鐢熸垚 webhook_uuid
+        # 如果是支持统一 webhook 模式的平台，生成 webhook_uuid
         ensure_platform_webhook_config(new_platform_config)
 
         self.config["platform"].append(new_platform_config)
@@ -1248,7 +1244,7 @@ class ConfigRoute(Route):
             )
         except Exception as e:
             return Response().error(str(e)).__dict__
-        return Response().ok(None, "鏂板骞冲彴閰嶇疆鎴愬姛~").__dict__
+        return Response().ok(None, "新增平台配置成功~").__dict__
 
     async def post_new_provider(self):
         new_provider_config = await request.json
@@ -1259,19 +1255,19 @@ class ConfigRoute(Route):
             )
         except Exception as e:
             return Response().error(str(e)).__dict__
-        return Response().ok(None, "鏂板鏈嶅姟鎻愪緵鍟嗛厤缃垚鍔?).__dict__
+        return Response().ok(None, "新增服务提供商配置成功").__dict__
 
     async def post_update_platform(self):
         update_platform_config = await request.json
         origin_platform_id = update_platform_config.get("id", None)
         new_config = update_platform_config.get("config", None)
         if not origin_platform_id or not new_config:
-            return Response().error("鍙傛暟閿欒").__dict__
+            return Response().error("参数错误").__dict__
 
         if origin_platform_id != new_config.get("id", None):
-            return Response().error("鏈哄櫒浜哄悕绉颁笉鍏佽淇敼").__dict__
+            return Response().error("机器人名称不允许修改").__dict__
 
-        # 濡傛灉鏄敮鎸佺粺涓€ webhook 妯″紡鐨勫钩鍙帮紝涓斿惎鐢ㄤ簡缁熶竴 webhook 妯″紡锛岀‘淇濇湁 webhook_uuid
+        # 如果是支持统一 webhook 模式的平台，且启用了统一 webhook 模式，确保有 webhook_uuid
         ensure_platform_webhook_config(new_config)
 
         for i, platform in enumerate(self.config["platform"]):
@@ -1279,21 +1275,21 @@ class ConfigRoute(Route):
                 self.config["platform"][i] = new_config
                 break
         else:
-            return Response().error("鏈壘鍒板搴斿钩鍙?).__dict__
+            return Response().error("未找到对应平台").__dict__
 
         try:
             save_config(self.config, self.config, is_core=True)
             await self.core_lifecycle.platform_manager.reload(new_config)
         except Exception as e:
             return Response().error(str(e)).__dict__
-        return Response().ok(None, "鏇存柊骞冲彴閰嶇疆鎴愬姛~").__dict__
+        return Response().ok(None, "更新平台配置成功~").__dict__
 
     async def post_update_provider(self):
         update_provider_config = await request.json
         origin_provider_id = update_provider_config.get("id", None)
         new_config = update_provider_config.get("config", None)
         if not origin_provider_id or not new_config:
-            return Response().error("鍙傛暟閿欒").__dict__
+            return Response().error("参数错误").__dict__
 
         try:
             await self.core_lifecycle.provider_manager.update_provider(
@@ -1301,7 +1297,7 @@ class ConfigRoute(Route):
             )
         except Exception as e:
             return Response().error(str(e)).__dict__
-        return Response().ok(None, "鏇存柊鎴愬姛锛屽凡缁忓疄鏃剁敓鏁垀").__dict__
+        return Response().ok(None, "更新成功，已经实时生效~").__dict__
 
     async def post_delete_platform(self):
         platform_id = await request.json
@@ -1311,19 +1307,19 @@ class ConfigRoute(Route):
                 del self.config["platform"][i]
                 break
         else:
-            return Response().error("鏈壘鍒板搴斿钩鍙?).__dict__
+            return Response().error("未找到对应平台").__dict__
         try:
             save_config(self.config, self.config, is_core=True)
             await self.core_lifecycle.platform_manager.terminate_platform(platform_id)
         except Exception as e:
             return Response().error(str(e)).__dict__
-        return Response().ok(None, "鍒犻櫎骞冲彴閰嶇疆鎴愬姛~").__dict__
+        return Response().ok(None, "删除平台配置成功~").__dict__
 
     async def post_delete_provider(self):
         provider_id = await request.json
         provider_id = provider_id.get("id", "")
         if not provider_id:
-            return Response().error("缂哄皯鍙傛暟 id").__dict__
+            return Response().error("缺少参数 id").__dict__
 
         try:
             await self.core_lifecycle.provider_manager.delete_provider(
@@ -1331,25 +1327,25 @@ class ConfigRoute(Route):
             )
         except Exception as e:
             return Response().error(str(e)).__dict__
-        return Response().ok(None, "鍒犻櫎鎴愬姛锛屽凡缁忓疄鏃剁敓鏁堛€?).__dict__
+        return Response().ok(None, "删除成功，已经实时生效。").__dict__
 
     async def get_llm_tools(self):
-        """鑾峰彇鍑芥暟璋冪敤宸ュ叿銆傚寘鍚簡鏈湴鍔犺浇鐨勪互鍙?MCP 鏈嶅姟鐨勫伐鍏?""
+        """获取函数调用工具。包含了本地加载的以及 MCP 服务的工具"""
         tool_mgr = self.core_lifecycle.provider_manager.llm_tools
         tools = tool_mgr.get_func_desc_openai_style()
         return Response().ok(tools).__dict__
 
     async def _register_platform_logo(self, platform, platform_default_tmpl) -> None:
-        """娉ㄥ唽骞冲彴logo鏂囦欢骞剁敓鎴愯闂护鐗?""
+        """注册平台logo文件并生成访问令牌"""
         if not platform.logo_path:
             return
 
         try:
-            # 妫€鏌ョ紦瀛?
+            # 检查缓存
             cache_key = f"{platform.name}:{platform.logo_path}"
             if cache_key in self._logo_token_cache:
                 cached_token = self._logo_token_cache[cache_key]
-                # 纭繚platform_default_tmpl[platform.name]瀛樺湪涓斾负瀛楀吀
+                # 确保platform_default_tmpl[platform.name]存在且为字典
                 if platform.name not in platform_default_tmpl or not isinstance(
                     platform_default_tmpl[platform.name], dict
                 ):
@@ -1358,27 +1354,27 @@ class ConfigRoute(Route):
                 logger.debug(f"Using cached logo token for platform {platform.name}")
                 return
 
-            # 鑾峰彇骞冲彴閫傞厤鍣ㄧ被
+            # 获取平台适配器类
             platform_cls = platform_cls_map.get(platform.name)
             if not platform_cls:
                 logger.warning(f"Platform class not found for {platform.name}")
                 return
 
-            # 鑾峰彇鎻掍欢鐩綍璺緞
+            # 获取插件目录路径
             module_file = inspect.getfile(platform_cls)
             plugin_dir = os.path.dirname(module_file)
 
-            # 瑙ｆ瀽logo鏂囦欢璺緞
+            # 解析logo文件路径
             logo_file_path = os.path.join(plugin_dir, platform.logo_path)
 
-            # 妫€鏌ユ枃浠舵槸鍚﹀瓨鍦ㄥ苟娉ㄥ唽浠ょ墝
+            # 检查文件是否存在并注册令牌
             if os.path.exists(logo_file_path):
                 logo_token = await file_token_service.register_file(
                     logo_file_path,
                     timeout=3600,
                 )
 
-                # 纭繚platform_default_tmpl[platform.name]瀛樺湪涓斾负瀛楀吀
+                # 确保platform_default_tmpl[platform.name]存在且为字典
                 if platform.name not in platform_default_tmpl or not isinstance(
                     platform_default_tmpl[platform.name], dict
                 ):
@@ -1386,7 +1382,7 @@ class ConfigRoute(Route):
 
                 platform_default_tmpl[platform.name]["logo_token"] = logo_token
 
-                # 缂撳瓨token
+                # 缓存token
                 self._logo_token_cache[cache_key] = logo_token
 
                 logger.debug(f"Logo token registered for platform {platform.name}")
@@ -1409,7 +1405,7 @@ class ConfigRoute(Route):
     def _inject_platform_metadata_with_i18n(
         self, platform, platform_items_to_inject: dict, platform_i18n_translations: dict
     ):
-        """灏嗛厤缃厓鏁版嵁娉ㄥ叆鍒?metadata 涓苟澶勭悊鍥介檯鍖栭敭杞崲銆?""
+        """将配置元数据注入到 metadata 中并处理国际化键转换。"""
         if platform.i18n_resources:
             i18n_prefix = f"platform_group.platform.{platform.name}"
 
@@ -1569,7 +1565,6 @@ class ConfigRoute(Route):
         return metadata, platform_i18n_translations, platform_type_metadata
 
     async def _get_astrbot_config(self):
-        logger.warning("[config-route] _get_astrbot_config start")
         config = self.config
         (
             metadata,
@@ -1577,7 +1572,7 @@ class ConfigRoute(Route):
             platform_type_metadata,
         ) = await self._build_platform_schema_with_i18n()
 
-        # 鏈嶅姟鎻愪緵鍟嗙殑榛樿閰嶇疆妯℃澘娉ㄥ叆
+        # 服务提供商的默认配置模板注入
         provider_schema, provider_i18n_translations, provider_type_metadata = (
             self._build_provider_schema_with_i18n()
         )
@@ -1601,12 +1596,12 @@ class ConfigRoute(Route):
                     break
                 ret["config"] = (
                     plugin_md.config
-                )  # 杩欐槸鑷畾涔夌殑 Dict 绫伙紙AstrBotConfig锛?
+                )  # 这是自定义的 Dict 类（AstrBotConfig）
                 ret["metadata"] = {
                     plugin_name: {
-                        "description": f"{plugin_name} 閰嶇疆",
+                        "description": f"{plugin_name} 配置",
                         "type": "object",
-                        "items": plugin_md.config.schema,  # 鍒濆鍖栨椂閫氳繃 __setattr__ 瀛樺叆浜?schema
+                        "items": plugin_md.config.schema,  # 初始化时通过 __setattr__ 存入了 schema
                     },
                 }
                 break
@@ -1618,10 +1613,10 @@ class ConfigRoute(Route):
     ) -> None:
         try:
             if conf_id not in self.acm.confs:
-                raise ValueError(f"閰嶇疆鏂囦欢 {conf_id} 涓嶅瓨鍦?)
+                raise ValueError(f"配置文件 {conf_id} 不存在")
             astrbot_config = self.acm.confs[conf_id]
 
-            # 淇濈暀鏈嶅姟绔殑 t2i_active_template 鍊?
+            # 保留服务端的 t2i_active_template 值
             if "t2i_active_template" in astrbot_config:
                 post_configs["t2i_active_template"] = astrbot_config[
                     "t2i_active_template"
@@ -1638,9 +1633,9 @@ class ConfigRoute(Route):
                 md = plugin_md
 
         if not md:
-            raise ValueError(f"鎻掍欢 {plugin_name} 涓嶅瓨鍦?)
+            raise ValueError(f"插件 {plugin_name} 不存在")
         if not md.config:
-            raise ValueError(f"鎻掍欢 {plugin_name} 娌℃湁娉ㄥ唽閰嶇疆")
+            raise ValueError(f"插件 {plugin_name} 没有注册配置")
         assert md.config is not None
 
         try:
@@ -1648,8 +1643,7 @@ class ConfigRoute(Route):
                 post_configs, getattr(md.config, "schema", {}), is_core=False
             )
             if errors:
-                raise ValueError(f"鏍煎紡鏍￠獙鏈€氳繃: {errors}")
+                raise ValueError(f"格式校验未通过: {errors}")
             md.config.save_config(post_configs)
         except Exception as e:
             raise e
-
