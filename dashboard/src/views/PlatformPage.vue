@@ -318,6 +318,7 @@ export default {
   },
 
   mounted() {
+    console.error('[platform-debug] PlatformPage mounted');
     this.getConfig();
     this.getPlatformStats();
     // 每 5 秒刷新一次平台状态
@@ -355,11 +356,18 @@ export default {
     },
 
     getConfig() {
+      console.error('[platform-debug] PlatformPage getConfig called');
       axios.get('/api/config/get').then((res) => {
+        console.error('[platform-debug] PlatformPage getConfig response arrived');
         this.config_data = res.data.data.config;
         this.fetched = true
         this.metadata = res.data.data.metadata;
         this.platformTypeMetadata = res.data.data.platform_type_metadata || {};
+        console.error('[platform-debug] PlatformPage response summary', {
+          templateKeys: Object.keys(this.metadata?.platform_group?.metadata?.platform?.config_template || {}),
+          platformTypeMetadataKeys: Object.keys(this.platformTypeMetadata || {}),
+          platformI18nLocales: Object.keys(res.data.data.platform_i18n_translations || {})
+        });
         console.info('[platform-page] config payload', {
           templateKeys: Object.keys(this.metadata?.platform_group?.metadata?.platform?.config_template || {}),
           platformTypeMetadataKeys: Object.keys(this.platformTypeMetadata || {}),

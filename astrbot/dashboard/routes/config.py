@@ -756,6 +756,11 @@ class ConfigRoute(Route):
             )
 
     async def get_configs(self):
+        logger.warning(
+            "[platform-debug] get_configs called plugin_name=%s path=%s",
+            request.args.get("plugin_name", None),
+            request.path,
+        )
         # plugin_name 为空时返回 AstrBot 配置
         # 否则返回指定 plugin_name 的插件配置
         plugin_name = request.args.get("plugin_name", None)
@@ -1565,12 +1570,25 @@ class ConfigRoute(Route):
         return metadata, platform_i18n_translations, platform_type_metadata
 
     async def _get_astrbot_config(self):
+        logger.warning("[platform-debug] _get_astrbot_config entered")
         config = self.config
         (
             metadata,
             platform_i18n_translations,
             platform_type_metadata,
         ) = await self._build_platform_schema_with_i18n()
+        logger.warning(
+            "[platform-debug] platform payload templates=%s type_metadata=%s i18n_locales=%s",
+            list(
+                metadata.get("platform_group", {})
+                .get("metadata", {})
+                .get("platform", {})
+                .get("config_template", {})
+                .keys()
+            ),
+            list(platform_type_metadata.keys()),
+            list(platform_i18n_translations.keys()),
+        )
 
         # 服务提供商的默认配置模板注入
         provider_schema, provider_i18n_translations, provider_type_metadata = (
