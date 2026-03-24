@@ -43,21 +43,9 @@ const translateIfKey = (value) => {
 }
 
 const filteredIterable = computed(() => {
-  const result = {}
-  const metadataItems = props.metadata?.[props.metadataKey]?.items || {}
-  const iterable = props.iterable || {}
-
-  for (const key of Object.keys(metadataItems)) {
-    if (key === 'hint') continue
-    result[key] = iterable[key]
-  }
-
-  for (const [key, value] of Object.entries(iterable)) {
-    if (key === 'hint' || key in result) continue
-    result[key] = value
-  }
-
-  return result
+  if (!props.iterable) return {}
+  const { hint, ...rest } = props.iterable
+  return rest
 })
 
 const providerHint = computed(() => {
@@ -167,28 +155,6 @@ function getItemPath(key) {
   return props.pathPrefix ? `${props.pathPrefix}.${key}` : key
 }
 
-function ensureStructuredValue(key, itemMeta) {
-  if (!props.iterable || typeof props.iterable !== 'object') {
-    return undefined
-  }
-
-  if (props.iterable[key] !== undefined && props.iterable[key] !== null) {
-    return props.iterable[key]
-  }
-
-  if (itemMeta?.type === 'object' || itemMeta?.type === 'dict') {
-    props.iterable[key] = {}
-    return props.iterable[key]
-  }
-
-  if (itemMeta?.type === 'list' || itemMeta?.type === 'template_list') {
-    props.iterable[key] = []
-    return props.iterable[key]
-  }
-
-  return props.iterable[key]
-}
-
 function hasVisibleItemsAfter(items, currentIndex) {
   const itemEntries = Object.entries(items)
 
@@ -238,7 +204,7 @@ function hasVisibleItemsAfter(items, currentIndex) {
             <v-expand-transition>
               <AstrBotConfig
                 :metadata="metadata[metadataKey].items"
-                :iterable="ensureStructuredValue(key, metadata[metadataKey].items[key])"
+                :iterable="iterable[key]"
                 :metadataKey="key"
                 :pluginName="pluginName"
                 :pathPrefix="getItemPath(key)"
@@ -265,8 +231,7 @@ function hasVisibleItemsAfter(items, currentIndex) {
               </v-list-item-subtitle>
             </div>
             <TemplateListEditor
-              :model-value="ensureStructuredValue(key, metadata[metadataKey].items[key])"
-              @update:model-value="iterable[key] = $event"
+              v-model="iterable[key]"
               :templates="metadata[metadataKey].items[key]?.templates || {}"
               class="config-field"
             />

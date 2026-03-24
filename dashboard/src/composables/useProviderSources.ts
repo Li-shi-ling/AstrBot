@@ -291,6 +291,39 @@ export function useProviderSources(options: UseProviderSourcesOptions) {
     return getRaw(value) ? tmConfigMetadata(value) : value
   }
 
+  function cloneDefaultValue(value: any) {
+    if (Array.isArray(value) || (value && typeof value === 'object')) {
+      return JSON.parse(JSON.stringify(value))
+    }
+    return value
+  }
+
+  function applySchemaDefaults(target: Record<string, any>, schemaItems: Record<string, any>) {
+    for (const [key, itemMeta] of Object.entries(schemaItems || {})) {
+      const meta = itemMeta as Record<string, any>
+
+      if (target[key] === undefined) {
+        if ('default' in meta) {
+          target[key] = cloneDefaultValue(meta.default)
+        } else if (meta.type === 'object' || meta.type === 'dict') {
+          target[key] = {}
+        } else if (meta.type === 'list' || meta.type === 'template_list') {
+          target[key] = []
+        }
+      }
+
+      if (
+        (meta.type === 'object' || meta.type === 'dict')
+        && meta.items
+        && target[key]
+        && typeof target[key] === 'object'
+        && !Array.isArray(target[key])
+      ) {
+        applySchemaDefaults(target[key], meta.items as Record<string, any>)
+      }
+    }
+  }
+
   function getTemplateDisplayName(templateName: string, template: Record<string, any>) {
     return translateConfigMetadataKey(template?._display_name) || templateName
   }
@@ -389,18 +422,10 @@ export function useProviderSources(options: UseProviderSourcesOptions) {
 
     const sourceType = source.type
     const typeSpecificMetadata = sourceType ? providerTypeMetadata.value?.[sourceType] : null
+    const baseSchemaItems = configSchema.value?.provider?.items || {}
+    applySchemaDefaults(source, baseSchemaItems)
     if (typeSpecificMetadata?.items) {
-      for (const [key, itemMeta] of Object.entries(typeSpecificMetadata.items)) {
-        if (source[key] !== undefined) {
-          continue
-        }
-
-        if ((itemMeta as Record<string, any>)?.type === 'object') {
-          source[key] = {}
-        } else if ((itemMeta as Record<string, any>)?.type === 'list' || (itemMeta as Record<string, any>)?.type === 'template_list') {
-          source[key] = []
-        }
-      }
+      applySchemaDefaults(source, typeSpecificMetadata.items)
     }
 
     return source

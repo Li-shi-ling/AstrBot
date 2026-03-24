@@ -1456,7 +1456,7 @@ class ConfigRoute(Route):
         for lang, lang_data in provider.i18n_resources.items():
             provider_i18n_translations.setdefault(lang, {}).setdefault(
                 "provider_group", {}
-            ).setdefault("provider", {})[provider.type] = lang_data
+            ).setdefault("provider", {})[provider.type] = copy.deepcopy(lang_data)
 
     def _build_provider_schema_with_i18n(self) -> tuple[dict, dict, dict]:
         provider_metadata = ConfigMetadataI18n.convert_to_i18n_keys(
