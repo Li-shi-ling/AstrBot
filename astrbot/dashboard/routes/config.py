@@ -1544,7 +1544,7 @@ class ConfigRoute(Route):
                     self._register_platform_logo(platform, platform_default_tmpl),
                 )
 
-            logger.debug(
+            logger.info(
                 "[platform-schema] name=%s template_keys=%s metadata_keys=%s i18n_locales=%s",
                 platform.name,
                 list((platform.default_config_tmpl or {}).keys()),
@@ -1555,7 +1555,7 @@ class ConfigRoute(Route):
         if logo_registration_tasks:
             await asyncio.gather(*logo_registration_tasks, return_exceptions=True)
 
-        logger.debug(
+        logger.info(
             "[platform-schema] templates=%s type_metadata=%s translations=%s",
             list(platform_default_tmpl.keys()),
             list(platform_type_metadata.keys()),

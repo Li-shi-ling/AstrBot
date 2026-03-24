@@ -360,16 +360,21 @@ export default {
         this.fetched = true
         this.metadata = res.data.data.metadata;
         this.platformTypeMetadata = res.data.data.platform_type_metadata || {};
-        console.debug('[platform-page] config payload', {
+        console.info('[platform-page] config payload', {
           templateKeys: Object.keys(this.metadata?.platform_group?.metadata?.platform?.config_template || {}),
           platformTypeMetadataKeys: Object.keys(this.platformTypeMetadata || {}),
-          platformTypes: (this.config_data.platform || []).map(item => item.type)
+          platformTypes: (this.config_data.platform || []).map(item => item.type),
+          platformI18nLocales: Object.keys(res.data.data.platform_i18n_translations || {})
         });
 
         // 将插件平台适配器的 i18n 翻译注入到前端 i18n 系统中
         const platformI18n = res.data.data.platform_i18n_translations;
         if (platformI18n && typeof platformI18n === 'object') {
           mergeDynamicTranslations('features.config-metadata', platformI18n);
+          console.info('[platform-page] merged platform i18n', {
+            currentLocale: localStorage.getItem('astrbot-locale') || 'zh-CN',
+            currentLocalePayload: platformI18n[localStorage.getItem('astrbot-locale') || 'zh-CN'] || null
+          });
         }
       }).catch((err) => {
         this.showError(err);

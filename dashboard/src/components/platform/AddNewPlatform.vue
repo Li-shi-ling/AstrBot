@@ -484,7 +484,7 @@ export default {
     selectedPlatformType(newType) {
       if (newType && this.platformTemplates[newType]) {
         this.selectedPlatformConfig = this.sanitizePlatformConfig(this.platformTemplates[newType]);
-        console.debug('[platform-dialog] selected template', {
+        console.info('[platform-dialog] selected template', {
           selectedPlatformType: newType,
           template: this.platformTemplates[newType],
           sanitizedConfig: this.selectedPlatformConfig,
@@ -711,7 +711,7 @@ export default {
       try {
         // 更新平台配置
         const sanitizedConfig = this.sanitizePlatformConfig(this.updatingPlatformConfig);
-        console.debug('[platform-dialog] update config', {
+        console.info('[platform-dialog] update config', {
           originalId: id,
           rawConfig: this.updatingPlatformConfig,
           sanitizedConfig,
@@ -741,7 +741,7 @@ export default {
     },
     async savePlatform() {
       const sanitizedConfig = this.sanitizePlatformConfig(this.selectedPlatformConfig);
-      console.debug('[platform-dialog] save config', {
+      console.info('[platform-dialog] save config', {
         selectedPlatformType: this.selectedPlatformType,
         rawConfig: this.selectedPlatformConfig,
         sanitizedConfig,
