@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="platform-page">
     <v-container fluid class="pa-0">
       <v-row class="d-flex justify-space-between align-center px-4 py-3 pb-8">
@@ -30,9 +30,9 @@
               :bglogo="getPlatformIcon(platform.type || platform.id)" @toggle-enabled="platformStatusChange"
               @delete="deletePlatform" @edit="editPlatform">
               <template #item-details="{ item }">
-                <!-- 平台运行状态 - 只在非运行状态或有错误时显示 -->
+                <!-- 骞冲彴杩愯鐘舵€?- 鍙湪闈炶繍琛岀姸鎬佹垨鏈夐敊璇椂鏄剧ず -->
                 <div class="platform-status-row mb-2" v-if="getPlatformStat(item.id) && (getPlatformStat(item.id)?.status !== 'running' || getPlatformStat(item.id)?.error_count > 0)">
-                  <!-- 状态 chip - 只在非 running 状态时显示 -->
+                  <!-- 鐘舵€?chip - 鍙湪闈?running 鐘舵€佹椂鏄剧ず -->
                   <v-chip
                     v-if="getPlatformStat(item.id)?.status !== 'running'"
                     size="small"
@@ -43,7 +43,7 @@
                     <v-icon size="small" start>{{ getStatusIcon(getPlatformStat(item.id)?.status) }}</v-icon>
                     {{ tm('runtimeStatus.' + (getPlatformStat(item.id)?.status || 'unknown')) }}
                   </v-chip>
-                  <!-- 错误数量提示 -->
+                  <!-- 閿欒鏁伴噺鎻愮ず -->
                   <v-chip
                     v-if="getPlatformStat(item.id)?.error_count > 0"
                     size="small"
@@ -90,7 +90,7 @@
         </v-row>
       </div>
 
-      <!-- 日志部分 -->
+      <!-- 鏃ュ織閮ㄥ垎 -->
       <v-card elevation="0" class="mt-4 mb-10">
         <v-card-title class="d-flex align-center py-3 px-4">
           <v-icon class="me-2">mdi-console-line</v-icon>
@@ -111,12 +111,12 @@
       </v-card>
     </v-container>
 
-    <!-- 添加平台适配器对话框 -->
+    <!-- 娣诲姞骞冲彴閫傞厤鍣ㄥ璇濇 -->
     <AddNewPlatform v-model:show="showAddPlatformDialog" :metadata="metadata" :config_data="config_data" :platform-type-metadata="platformTypeMetadata" ref="addPlatformDialog"
       :updating-mode="updatingMode" :updating-platform-config="updatingPlatformConfig" @update="getConfig"
       @show-toast="showToast" @refresh-config="getConfig"/>
 
-    <!-- Webhook URL 对话框 -->
+    <!-- Webhook URL 瀵硅瘽妗?-->
     <v-dialog v-model="showWebhookDialog" max-width="600">
       <v-card>
         <v-card-title class="d-flex align-center pa-4">
@@ -177,7 +177,7 @@
       </v-card>
     </v-dialog>
 
-    <!-- 错误详情对话框 -->
+    <!-- 閿欒璇︽儏瀵硅瘽妗?-->
     <v-dialog v-model="showErrorDialog" max-width="700">
       <v-card>
         <v-card-title class="d-flex align-center pa-4">
@@ -218,7 +218,7 @@
       </v-card>
     </v-dialog>
 
-    <!-- 消息提示 -->
+    <!-- 娑堟伅鎻愮ず -->
     <v-snackbar :timeout="3000" elevation="24" :color="save_message_success" v-model="save_message_snack"
       location="top">
       {{ save_message }}
@@ -283,11 +283,11 @@ export default {
       showWebhookDialog: false,
       currentWebhookUuid: '',
 
-      // 平台统计信息
+      // 骞冲彴缁熻淇℃伅
       platformStats: {},
       statsRefreshInterval: null,
 
-      // 错误详情对话框
+      // 閿欒璇︽儏瀵硅瘽妗?
       showErrorDialog: false,
       currentErrorPlatform: null,
       showQrDialog: false,
@@ -318,14 +318,15 @@ export default {
   },
 
   mounted() {
+    console.error('[platform-page] mounted');
     this.getConfig();
     this.getPlatformStats();
-    // 每 5 秒刷新一次平台状态
+    // 姣?5 绉掑埛鏂颁竴娆″钩鍙扮姸鎬?
     this.statsRefreshInterval = setInterval(() => {
       this.getPlatformStats();
     }, 5000);
     
-    // 监听语言切换事件，重新加载配置以获取插件的 i18n 数据
+    // 鐩戝惉璇█鍒囨崲浜嬩欢锛岄噸鏂板姞杞介厤缃互鑾峰彇鎻掍欢鐨?i18n 鏁版嵁
     window.addEventListener('astrbot-locale-changed', this.handleLocaleChange);
   },
 
@@ -333,28 +334,29 @@ export default {
     if (this.statsRefreshInterval) {
       clearInterval(this.statsRefreshInterval);
     }
-    // 移除语言切换事件监听器
+    // 绉婚櫎璇█鍒囨崲浜嬩欢鐩戝惉鍣?
     window.removeEventListener('astrbot-locale-changed', this.handleLocaleChange);
   },
 
   methods: {
-    // 处理语言切换事件，重新加载配置以获取插件的 i18n 数据
+    // 澶勭悊璇█鍒囨崲浜嬩欢锛岄噸鏂板姞杞介厤缃互鑾峰彇鎻掍欢鐨?i18n 鏁版嵁
     handleLocaleChange() {
       this.getConfig();
     },
 
-    // 从工具函数导入
+    // 浠庡伐鍏峰嚱鏁板鍏?
     getPlatformIcon(platform_id) {
-      // 首先检查是否有来自插件的 logo_token
+      // 棣栧厛妫€鏌ユ槸鍚︽湁鏉ヨ嚜鎻掍欢鐨?logo_token
       const template = this.metadata['platform_group']?.metadata?.platform?.config_template?.[platform_id];
       if (template && template.logo_token) {
-          // 通过文件服务访问插件提供的 logo
+          // 閫氳繃鏂囦欢鏈嶅姟璁块棶鎻掍欢鎻愪緵鐨?logo
         return `/api/file/${template.logo_token}`;
       }
       return getPlatformIcon(platform_id);
     },
 
     getConfig() {
+      console.error('[platform-page] getConfig start');
       axios.get('/api/config/get').then((res) => {
         this.config_data = res.data.data.config;
         this.fetched = true
@@ -367,7 +369,7 @@ export default {
           platformI18nLocales: Object.keys(res.data.data.platform_i18n_translations || {})
         });
 
-        // 将插件平台适配器的 i18n 翻译注入到前端 i18n 系统中
+        // Merge platform adapter i18n translations into the frontend i18n store.
         const platformI18n = res.data.data.platform_i18n_translations;
         if (platformI18n && typeof platformI18n === 'object') {
           mergeDynamicTranslations('features.config-metadata', platformI18n);
@@ -384,7 +386,7 @@ export default {
     async getPlatformStats() {
       await axios.get('/api/platform/stats').then((res) => {
         if (res.data.status === 'ok') {
-          // 将数组转换为以 id 为 key 的对象，方便查找
+          // 灏嗘暟缁勮浆鎹负浠?id 涓?key 鐨勫璞★紝鏂逛究鏌ユ壘
           const stats = {};
           for (const platform of res.data.data.platforms || []) {
             stats[platform.id] = platform;
@@ -392,7 +394,7 @@ export default {
           this.platformStats = stats;
         }
       }).catch((err) => {
-        console.warn('获取平台统计信息失败:', err);
+        console.warn('鑾峰彇骞冲彴缁熻淇℃伅澶辫触:', err);
       });
     },
 
@@ -490,7 +492,7 @@ export default {
           return target;
         }
 
-        // 1) 先按模板顺序写入，保证字段相对顺序与 template 一致
+        // 1) 鍏堟寜妯℃澘椤哄簭鍐欏叆锛屼繚璇佸瓧娈电浉瀵归『搴忎笌 template 涓€鑷?
         for (const [key, refValue] of Object.entries(referenceObj)) {
           const hasSourceKey = Object.prototype.hasOwnProperty.call(sourceObj, key);
           const sourceValue = sourceObj[key];
@@ -520,7 +522,7 @@ export default {
           }
         }
 
-        // 2) 再补充 source 中模板没有的额外字段，保持旧配置兼容性
+        // 2) 鍐嶈ˉ鍏?source 涓ā鏉挎病鏈夌殑棰濆瀛楁锛屼繚鎸佹棫閰嶇疆鍏煎鎬?
         for (const [key, value] of Object.entries(sourceObj)) {
           if (Object.prototype.hasOwnProperty.call(referenceObj, key)) {
             continue;
@@ -568,7 +570,7 @@ export default {
     },
 
     platformStatusChange(platform) {
-      platform.enable = !platform.enable; // 切换状态
+      platform.enable = !platform.enable; // 鍒囨崲鐘舵€?
 
       axios.post('/api/config/platform/update', {
         id: platform.id,
@@ -577,7 +579,7 @@ export default {
         this.getConfig();
         this.showSuccess(res.data.message || this.messages.statusUpdateSuccess);
       }).catch((err) => {
-        platform.enable = !platform.enable; // 发生错误时回滚状态
+        platform.enable = !platform.enable; // 鍙戠敓閿欒鏃跺洖婊氱姸鎬?
         this.showError(err.response?.data?.message || err.message);
       });
     },
@@ -629,7 +631,7 @@ export default {
     }
   },
   computed: {
-    // 安全访问翻译的计算属性
+    // 瀹夊叏璁块棶缈昏瘧鐨勮绠楀睘鎬?
     messages() {
       return {
         updateSuccess: this.tm('messages.updateSuccess'),
@@ -709,3 +711,4 @@ export default {
   color: rgba(0, 0, 0, 0.7);
 }
 </style>
+
