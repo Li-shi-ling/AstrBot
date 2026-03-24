@@ -112,7 +112,7 @@
     </v-container>
 
     <!-- 添加平台适配器对话框 -->
-    <AddNewPlatform v-model:show="showAddPlatformDialog" :metadata="metadata" :config_data="config_data" ref="addPlatformDialog"
+    <AddNewPlatform v-model:show="showAddPlatformDialog" :metadata="metadata" :config_data="config_data" :platform-type-metadata="platformTypeMetadata" ref="addPlatformDialog"
       :updating-mode="updatingMode" :updating-platform-config="updatingPlatformConfig" @update="getConfig"
       @show-toast="showToast" @refresh-config="getConfig"/>
 
@@ -268,6 +268,7 @@ export default {
       config_data: {},
       fetched: false,
       metadata: {},
+      platformTypeMetadata: {},
       showAddPlatformDialog: false,
 
       updatingPlatformConfig: {},
@@ -358,6 +359,7 @@ export default {
         this.config_data = res.data.data.config;
         this.fetched = true
         this.metadata = res.data.data.metadata;
+        this.platformTypeMetadata = res.data.data.platform_type_metadata || {};
 
         // 将插件平台适配器的 i18n 翻译注入到前端 i18n 系统中
         const platformI18n = res.data.data.platform_i18n_translations;

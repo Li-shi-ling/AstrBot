@@ -35,7 +35,7 @@
                     {{ tm('dialog.viewTutorial') }}
                   </v-btn>
                   <div class="mt-2">
-                    <AstrBotConfig :iterable="selectedPlatformConfig" :metadata="metadata['platform_group']?.metadata"
+                    <AstrBotConfig :iterable="selectedPlatformConfig" :metadata="platformSchema"
                       metadataKey="platform" />
                   </div>
                 </div>
@@ -46,7 +46,7 @@
                   disabled></v-text-field>
                 <div class="mt-3">
                   <div class="mt-2">
-                    <AstrBotConfig :iterable="updatingPlatformConfig" :metadata="metadata['platform_group']?.metadata"
+                    <AstrBotConfig :iterable="updatingPlatformConfig" :metadata="platformSchema"
                       metadataKey="platform" />
                   </div>
                 </div>
@@ -324,6 +324,10 @@ export default {
       type: Object,
       default: () => ({})
     },
+    platformTypeMetadata: {
+      type: Object,
+      default: () => ({})
+    },
     config_data: {
       type: Object,
       default: () => ({})
@@ -399,6 +403,26 @@ export default {
     },
     platformTemplates() {
       return this.metadata['platform_group']?.metadata?.platform?.config_template || {};
+    },
+    platformSchema() {
+      const baseSchema = JSON.parse(JSON.stringify(this.metadata['platform_group']?.metadata || {}));
+      if (!baseSchema.platform) {
+        return baseSchema;
+      }
+
+      const platformType = this.updatingMode
+        ? this.updatingPlatformConfig?.type
+        : this.selectedPlatformType;
+      const typeMetadata = this.platformTypeMetadata?.[platformType];
+
+      if (typeMetadata?.items) {
+        baseSchema.platform.items = {
+          ...(baseSchema.platform.items || {}),
+          ...JSON.parse(JSON.stringify(typeMetadata.items))
+        };
+      }
+
+      return baseSchema;
     },
     canSave() {
       // 基本条件：必须选择平台类型

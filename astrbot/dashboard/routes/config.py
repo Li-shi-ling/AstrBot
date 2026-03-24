@@ -1403,12 +1403,9 @@ class ConfigRoute(Route):
             )
 
     def _inject_platform_metadata_with_i18n(
-        self, platform, metadata, platform_i18n_translations: dict
+        self, platform, platform_items_to_inject: dict, platform_i18n_translations: dict
     ):
         """将配置元数据注入到 metadata 中并处理国际化键转换。"""
-        metadata["platform_group"]["metadata"]["platform"].setdefault("items", {})
-        platform_items_to_inject = copy.deepcopy(platform.config_metadata)
-
         if platform.i18n_resources:
             i18n_prefix = f"platform_group.platform.{platform.name}"
 
@@ -1421,10 +1418,6 @@ class ConfigRoute(Route):
                 for key in ("description", "hint", "labels"):
                     if key in field_value:
                         field_value[key] = f"{i18n_prefix}.{field_key}.{key}"
-
-        metadata["platform_group"]["metadata"]["platform"]["items"].update(
-            platform_items_to_inject
-        )
 
     def _apply_dynamic_i18n_keys(self, items: dict, i18n_prefix: str):
         """Replace configurable text fields with dynamic i18n keys recursively."""
@@ -1507,14 +1500,15 @@ class ConfigRoute(Route):
             provider_type_metadata,
         )
 
-    async def _get_astrbot_config(self):
-        config = self.config
+    async def _build_platform_schema_with_i18n(self) -> tuple[dict, dict, dict]:
         metadata = copy.deepcopy(CONFIG_METADATA_2)
         platform_i18n = ConfigMetadataI18n.convert_to_i18n_keys(
             {
                 "platform_group": {
                     "metadata": {
-                        "platform": metadata["platform_group"]["metadata"]["platform"]
+                        "platform": copy.deepcopy(
+                            CONFIG_METADATA_2["platform_group"]["metadata"]["platform"]
+                        )
                     }
                 }
             }
@@ -1523,37 +1517,45 @@ class ConfigRoute(Route):
             "platform_group"
         ]["metadata"]["platform"]
 
-        # 平台适配器的默认配置模板注入
         platform_default_tmpl = metadata["platform_group"]["metadata"]["platform"][
             "config_template"
         ]
-
-        # 收集平台的 i18n 翻译数据
         platform_i18n_translations = {}
-
-        # 收集需要注册logo的平台
+        platform_type_metadata = {}
         logo_registration_tasks = []
+
         for platform in platform_registry:
             if platform.default_config_tmpl:
                 platform_default_tmpl[platform.name] = copy.deepcopy(
                     platform.default_config_tmpl
                 )
 
-                # 注入配置元数据（在 convert_to_i18n_keys 之后，使用国际化键）
-                if platform.config_metadata:
-                    self._inject_platform_metadata_with_i18n(
-                        platform, metadata, platform_i18n_translations
-                    )
+            if platform.config_metadata:
+                platform_items_to_inject = copy.deepcopy(platform.config_metadata)
+                self._inject_platform_metadata_with_i18n(
+                    platform,
+                    platform_items_to_inject,
+                    platform_i18n_translations,
+                )
+                platform_type_metadata[platform.name] = {"items": platform_items_to_inject}
 
-                # 收集logo注册任务
-                if platform.logo_path:
-                    logo_registration_tasks.append(
-                        self._register_platform_logo(platform, platform_default_tmpl),
-                    )
+            if platform.logo_path and platform.default_config_tmpl:
+                logo_registration_tasks.append(
+                    self._register_platform_logo(platform, platform_default_tmpl),
+                )
 
-        # 并行执行logo注册
         if logo_registration_tasks:
             await asyncio.gather(*logo_registration_tasks, return_exceptions=True)
+
+        return metadata, platform_i18n_translations, platform_type_metadata
+
+    async def _get_astrbot_config(self):
+        config = self.config
+        (
+            metadata,
+            platform_i18n_translations,
+            platform_type_metadata,
+        ) = await self._build_platform_schema_with_i18n()
 
         # 服务提供商的默认配置模板注入
         provider_schema, provider_i18n_translations, provider_type_metadata = (
@@ -1565,6 +1567,7 @@ class ConfigRoute(Route):
             "metadata": metadata,
             "config": config,
             "platform_i18n_translations": platform_i18n_translations,
+            "platform_type_metadata": platform_type_metadata,
             "provider_i18n_translations": provider_i18n_translations,
             "provider_type_metadata": provider_type_metadata,
         }
